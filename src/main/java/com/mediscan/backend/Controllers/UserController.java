@@ -3,6 +3,7 @@ package com.mediscan.backend.Controllers;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mediscan.backend.Components.Login;
+import com.mediscan.backend.Components.OTP;
 import com.mediscan.backend.Components.Register;
 import com.mediscan.backend.Services.UserService;
 
@@ -55,13 +56,11 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.OK).body("Email sent Successfully");
     }
     
-    @GetMapping("/validate-otp")
-    public ResponseEntity<String> validateOtp(
-            @RequestParam String email,
-            @RequestParam String otp) {
+    @PostMapping("/validate-otp")
+    public ResponseEntity<String> validateOtp(@RequestBody OTP otpBody ) {
 
         // Validate the OTP
-        int isValid = userService.validateOtp(email, otp);
+        int isValid = userService.validateOtp(otpBody.getEmail(), otpBody.getOTP());
 
         if (isValid == 0) {
             return new ResponseEntity<>("OTP is valid!", HttpStatus.OK);

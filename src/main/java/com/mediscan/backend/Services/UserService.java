@@ -1,6 +1,7 @@
 package com.mediscan.backend.Services;
 
 import java.io.UnsupportedEncodingException;
+import java.time.Instant;
 import java.util.Date;
 import java.util.Optional;
 import java.util.Random;
@@ -10,6 +11,7 @@ import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +21,7 @@ import com.mediscan.backend.Components.User;
 import com.mediscan.backend.Repositories.UserRepo;
 
 import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 
 @Service
 public class UserService {
@@ -42,10 +45,10 @@ public class UserService {
         throws UnsupportedEncodingException, MessagingException 
     {
         Optional<User> optUser = userRepo.findByEmail(register.getEmail());
-        User user = optUser.isPresent()?optUser.get():new User(null,register.getUsername(),register.getEmail(),null,null,false,new Date());
+        User user = optUser.isPresent()?optUser.get():new User(null,register.getUsername(),register.getEmail(),null,null,false,null);
         if(userRepo.existsByEmail(register.getEmail())) {
             if(user.getEnabled())
-                return 1;
+                return 1; // user already registered and verified
         }
         String encodedPassword = passwordEncoder.encode(register.getPassword());
         String generatedCode = getCode();
@@ -54,6 +57,7 @@ public class UserService {
         String encodedGeneratedCode = passwordEncoder.encode(generatedCode);
         user.setPassword(encodedPassword);
         user.setVerificationCode(encodedGeneratedCode);
+        user.setCreatedTime(new Date());
         userRepo.save(user);
         return 0;
     }
@@ -80,32 +84,29 @@ public class UserService {
             return;
         }
         String subject = "Please verify your registration";
-        String content = "Dear User\r\n" +
-                "\r\n" +
-                "<h3>Your one-time password: " + verificationCode + "</h3>\r\n" +
-                "\r\n" +
-                "Please note that the OTP is valid for only one session. If you try to refresh the page or leave the site, you will be required to regenerate a new OTP.\r\n" +
-                "\r\n" +
-                "If you did not request this OTP, please connect with us immediately at mediscan.team.official@gmail.com.\r\n" +
-                "\r\n" +
-                "Regards,\r\n" +
-                "Support Team\r\n" +
-                "MediScan\r\n" +
-                "mediscan.team.official@gmail.com";
+        String content = "<h2>Dear User,</h2>" +
+                "<h3><strong>Your one-time password:</strong> " + verificationCode + "</h3>" +
+                "<p>Please note that the OTP is valid only for 3 minutes. If you try to refresh the page or leave the site, you will be required to regenerate a new OTP.</p><br><br>" +
+                "<p>If you did not request this OTP, please connect with us immediately at mediscan.team.official@gmail.com.</p>" +
+                "<p>Regards,<br>" +
+                "Support Team<br>" +
+                "MediScan<br>" +
+                "mail us at : mediscan.team.official@gmail.com</p>";
+
 
         sendEmail(toAddress, subject, content);
         System.out.println("\n\n\nSent email\n\n\n");
     }
 
-    private void sendEmail(String to, String subject, String body) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(to);
-        message.setSubject(subject);
-        message.setText(body);
-        System.out.println("\n\n\n"+message.getFrom() + "\n\n\n");
-        mailSender.send(message);
-    }
-   
+    private void sendEmail(String to, String subject, String body) throws MessagingException {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(body, true); 
+            mailSender.send(message);
+        }   
     // Method to validate email address format using regular expression
     private boolean isValidEmail(String email) {
         String EMAIL_REGEX = "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$";
@@ -116,6 +117,8 @@ public class UserService {
 
     public long timeDiffernce(Date startDate, Date endDate) {
         // Get the time in milliseconds from each Date object
+        Instant instant = startDate.toInstant();
+        startDate = Date.from(instant);
         long startTimeMillis = startDate.getTime();
         long endTimeMillis = endDate.getTime();
 
@@ -129,8 +132,8 @@ public class UserService {
     public int validateOtp(String email, String otp) {
         User user = userRepo.findByEmail(email).get();
         long timeDiff = timeDiffernce(user.getCreatedTime(), new Date());
-        if(timeDiff > 12000)
-        return 1; // otp validation exceeds 2 minutes
+        if(timeDiff > 180)
+        return 1; // otp validation exceeds 3 minutes
         if(!passwordEncoder.matches(otp, user.getVerificationCode()))
         return 2; // If the otp is invalid
         user.setEnabled(true);
