@@ -3,14 +3,17 @@ package com.mediscan.backend.Services;
 import java.io.UnsupportedEncodingException;
 import java.util.Optional;
 
+import org.springframework.mail.MailException;
 import org.springframework.stereotype.Service;
 
 import com.mediscan.backend.Components.Register;
 import com.mediscan.backend.Components.User;
 
+import jakarta.mail.MessagingException;
+
 @Service
 public class RegisterService extends UserService {
-    public int registerUser(Register register)
+    public int registerUser(Register register) throws MailException, MessagingException
     {
         Optional<User> optUser = userRepo.findByEmail(register.getEmail());
         User user = optUser.isPresent()?optUser.get():new User(null,register.getUsername(),register.getEmail(),null,null,false,null,false);
