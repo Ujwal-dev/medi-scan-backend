@@ -49,7 +49,7 @@ public class UserService {
     public int validateOTP(String email, String otp) {
         User user = userRepo.findByEmail(email).orElseThrow(() -> new RuntimeException("User not found"));
         long timeDiff = getTimeDifference(user.getCreatedTime(), new Date());
-        if (timeDiff > 180) return 1; // otp validation exceeds 3 minutes
+        if (timeDiff > 180) return 1; // if the otp validation exceeds 3 minutes
         if (!passwordEncoder.matches(otp, user.getVerificationCode())) return 2; // If the otp is invalid
         user.setEnabled(true);
         userRepo.save(user);
