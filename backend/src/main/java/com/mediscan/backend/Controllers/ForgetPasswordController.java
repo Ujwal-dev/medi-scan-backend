@@ -46,7 +46,6 @@ public class ForgetPasswordController {
     }
     @PostMapping("/forget-password/set-new-password")
     public ResponseEntity<String> changePassword(@RequestBody Login login) {
-        //TODO: process POST request
         if(!forgetPasswordService.canChangePassword(login.getEmail())) {
             return ResponseEntity.badRequest().body("Cannot change password! Reinitiate the request for changing password!");
         }

@@ -15,9 +15,11 @@ public class ForgetPasswordService extends UserService {
 
     public boolean canChangePassword(String email) {
         User user = userRepo.findByEmail(email).get();
-        if(user.getChangePasswordEnabled() && getTimeDifference(user.getCreatedTime(), new Date()) < (60*3)) {
+        long timeDiff = getTimeDifference(user.getCreatedTime(), new Date());
+        if(user.getChangePasswordEnabled() && timeDiff < (60*3)) {
             return true;
         }
+        
         return false;
     }
 
